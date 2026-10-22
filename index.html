@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Budi pasaulių nuotykiai</title>
+<link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#e9e6df;--ink:#3b3d3c;--grid:rgba(70,110,140,.26);--blue:#2d4fc4;--red:#c2412d;--green:#2e8b57;--gold:#f5a623;color-scheme:light dark}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#262927;--ink:#d9d7cf;--grid:rgba(150,190,210,.16);--blue:#7d9bff;--red:#ff8670;--green:#5fd593;--gold:#ffd166}}
+:root[data-theme="dark"]{--paper:#262927;--ink:#d9d7cf;--grid:rgba(150,190,210,.16);--blue:#7d9bff;--red:#ff8670;--green:#5fd593;--gold:#ffd166}
+*{box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{margin:0;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);background-color:var(--paper);color:var(--ink);font-family:'Architects Daughter','Segoe Print','Comic Sans MS',cursive;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:28px 28px}
+
+/* Išdėstymas: viskas telpa į langą, be slinkimo */
+.app{height:100vh;height:100dvh;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;grid-template-areas:"top" "nav" "stage" "info";gap:6px;padding:8px 10px}
+.top{grid-area:top;display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+h1{font-size:clamp(22px,6vw,34px);font-weight:400;margin:0;letter-spacing:.06em;line-height:1}
+.hud{display:flex;align-items:center;gap:10px;font-size:clamp(14px,3.8vw,18px);min-width:0;flex:1;justify-content:flex-end}
+.hud .stars{font-weight:bold;color:var(--gold);white-space:nowrap}
+.hud .msg{color:var(--blue);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+nav{grid-area:nav;display:flex;gap:2px}
+nav button{flex:1;min-width:0;font:inherit;font-size:min(3.4vw,15px);color:var(--ink);background:none;border:0;border-bottom:3px solid transparent;padding:6px 2px;cursor:pointer;white-space:nowrap;transition:transform .12s}
+nav button[aria-selected=true]{border-bottom-color:var(--blue)}
+nav button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+nav button.done::before{content:'✅ ';font-size:.8em}
+nav button:active{transform:scale(.95)}
+.stage{grid-area:stage;min-height:0;min-width:0;display:flex}
+#st{width:100%;height:100%;display:block;touch-action:manipulation}
+.info{grid-area:info;display:flex;flex-direction:column;gap:6px;min-width:0}
+#cap{margin:0;font-size:clamp(13px,3.5vw,16px);line-height:1.3}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.progress{display:flex;gap:5px}
+.pip{width:24px;height:24px;border-radius:50%;border:2px solid var(--ink);display:flex;align-items:center;justify-content:center;font-size:13px;background:var(--paper);transition:all .3s}
+.pip.done{background:var(--gold);border-color:var(--gold);color:#fff;transform:scale(1.1)}
+.actions{display:flex;gap:8px}
+.actions button{font:inherit;color:var(--ink);padding:6px 14px;border:2px solid var(--ink);border-radius:22px;border-bottom-width:4px;background:var(--paper);font-size:clamp(13px,3.5vw,16px);cursor:pointer;transition:all .15s}
+.actions button:hover:not(:disabled){background:var(--gold);color:#fff}
+.actions button:active:not(:disabled){transform:translateY(2px);border-bottom-width:2px}
+.actions button:disabled{opacity:.4;cursor:not-allowed}
+
+/* Plačiame/gulsčiame lange: scena kairėje, valdymas dešinėje */
+@media(orientation:landscape) and (min-width:700px){
+ .app{grid-template-columns:minmax(0,1fr) clamp(220px,32vw,340px);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:"stage top" "stage nav" "stage info";gap:8px 14px;padding:10px 14px}
+ .top{flex-direction:column;align-items:flex-start}
+ h1{font-size:clamp(28px,7vh,56px)}
+ .hud{justify-content:flex-start;flex-wrap:wrap;font-size:clamp(14px,3vh,19px)}
+ .hud .msg{white-space:normal;text-align:left}
+ nav{display:grid;grid-template-columns:1fr 1fr}
+ nav button{font-size:clamp(13px,2.8vh,18px);text-align:left}
+ #cap{font-size:clamp(13px,2.8vh,18px)}
+ .info{justify-content:flex-start}
+}
+
+/* Clickable SVG elements */
+.clickable{cursor:pointer;transition:opacity .2s}
+.clickable:hover{opacity:.78}
+.clickable.done{opacity:.5}
+.clickable.done *{pointer-events:none}
+
+@keyframes sparkle{0%{transform:translate(-50%,-50%) scale(.3) rotate(0);opacity:1}100%{transform:translate(-50%,-180%) scale(1.6) rotate(180deg);opacity:0}}
+.sparkle{position:fixed;pointer-events:none;font-size:34px;z-index:9999;animation:sparkle .9s ease-out forwards}
+
+.celebrate{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:10000;animation:fadeIn .4s;padding:20px}
+.celebrate .box{background:var(--paper);padding:28px 34px;border-radius:24px;text-align:center;max-width:500px;border:3px solid var(--ink);animation:pop .5s cubic-bezier(.34,1.56,.64,1)}
+.celebrate h2{font-size:clamp(24px,5vw,36px);margin:0 0 12px}
+.celebrate p{font-size:clamp(16px,2.4vw,20px);margin:0 0 12px;line-height:1.4}
+.celebrate button{font-family:inherit;padding:10px 28px;border:2px solid var(--ink);border-radius:26px;border-bottom-width:4px;background:var(--gold);color:#fff;font-size:clamp(17px,2.4vw,21px);cursor:pointer}
+.celebrate button:active{transform:translateY(2px);border-bottom-width:2px}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* Scene animations */
+.w{fill:none;stroke:var(--ink);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.w .b{stroke:var(--blue)}.w .r{stroke:var(--red)}.w .gr{stroke:var(--green)}
+.w text{stroke:none;fill:var(--blue);font-family:inherit}
+.c path,.c polygon,.c circle{fill:var(--paper)}.c .b>circle{fill:none}
+.w *{vector-effect:non-scaling-stroke}
+.bob{animation:bob .4s ease-in-out infinite alternate}
+.fl,.fr,.f1,.f2{transform-box:fill-box}
+.fl{transform-origin:100% 50%;animation:fw .5s ease-in-out infinite alternate}
+.fr{transform-origin:0 50%;animation:fw .5s ease-in-out infinite alternate-reverse}
+.f1{transform-origin:50% 0;animation:ft .4s ease-in-out infinite alternate}
+.f2{transform-origin:50% 0;animation:ft .4s ease-in-out infinite alternate-reverse}
+.bl{animation:fk 3s steps(1) infinite}.rd{animation:rd 1s linear infinite}
+.fire{transform-box:fill-box;transform-origin:50% 100%;animation:fi .25s ease-in-out infinite alternate}
+.st{animation:sm 2.4s ease-in-out infinite}.lv{transform-box:fill-box;transform-origin:50% 100%;animation:lv 4s ease-in-out infinite alternate}
+@keyframes bob{to{transform:translateY(-4px)}}
+@keyframes fw{from{transform:rotate(-14deg)}to{transform:rotate(14deg)}}
+@keyframes ft{from{transform:rotate(-12deg)}to{transform:rotate(12deg)}}
+@keyframes fk{0%{opacity:1}90%{opacity:.3}93%{opacity:1}96%{opacity:.4}}
+@keyframes rd{to{stroke-dashoffset:-60}}
+@keyframes fi{from{transform:scale(.9,.85)}to{transform:scale(1.1,1.15)}}
+@keyframes sm{0%{transform:translateY(0);opacity:.9}100%{transform:translateY(-22px);opacity:0}}
+@keyframes lv{from{transform:scaleY(.3)}to{transform:scaleY(1)}}
+@media(prefers-reduced-motion:reduce){.w *{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>BUDI</h1>
+    <div class="hud">
+      <span class="stars">⭐ <span id="stars">0</span></span>
+      <span class="msg" id="msg">Spausk ant paveiksliukų!</span>
+    </div>
+  </header>
+  <nav role="tablist" id="nav"></nav>
+  <main class="stage">
+    <svg id="st" viewBox="0 0 800 450" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Animuota Budi pasaulio scena"><filter id="wb" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence id="t" type="fractalNoise" baseFrequency=".03" numOctaves="2" seed="1" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3"/></filter><g class="w" id="sc" filter="url(#wb)"></g><rect width="800" height="450" fill="none" stroke="var(--ink)" stroke-width="4"/></svg>
+  </main>
+  <section class="info">
+    <p id="cap"></p>
+    <div class="row">
+      <div class="progress" id="progress" aria-label="Progresas"></div>
+      <div class="actions">
+        <button id="nextBtn" disabled>➡️ Toliau</button>
+        <button id="resetBtn">🔄 Iš naujo</button>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+const sp=(x,y,r)=>{let d='';for(let i=0;i<=64;i++){const a=i*.34,q=r*i/64;d+=(i?'L':'M')+(x+q*Math.cos(a)).toFixed(1)+' '+(y+q*Math.sin(a)).toFixed(1)}return `<path d="${d}"/>`};
+const P=(p,c='')=>`<polygon points="${p.map(q=>q.join(',')).join(' ')}" class="${c}"/>`;
+const L=(a,b,c,d,k='')=>`<path d="M${a} ${b}L${c} ${d}" class="${k}"/>`;
+function fin(bx,y,dir,len,hh){const ox=bx+dir*len;let s=P([[bx,y],[ox,y-hh],[ox,y+hh]]);for(let i=-1;i<=1;i++)s+=L(ox,y+i*hh*.5,ox-dir*8,y+i*hh*.5);return s}
+function foot(x,w){let s=P([[x,201],[x+w,201],[x+w+8,235],[x-6,235]]);for(let i=0;i<3;i++)s+=L(x+4+i*w/3,235,x+5+i*w/3,229);return s}
+const F={
+hood:(g)=>{const{cx,w,h,top}=g,y=200-h*.42;return `<g class="b">`+P([[cx-w*.58,top+h*.3],[cx,top-24],[cx+w*.58,top+h*.3]])+L(cx-w/2,y,cx+w/2,y)+P([[cx+w*.1,y],[cx+w*.3,y+30],[cx+w*.08,y+34]])+`</g>`},
+apron:(g)=>{const{cx,w,by}=g;return `<g class="b">`+P([[cx-w*.32,by],[cx+w*.32,by],[cx+w*.28,200],[cx-w*.28,200]])+`</g>`},
+hat:(g)=>{const{cx,w,h,top}=g,y=200-h*.45;return `<g class="b">`+L(cx-w*.62,top+8,cx+w*.62,top+8)+P([[cx-w*.32,top+8],[cx-w*.28,top-22],[cx+w*.28,top-22],[cx+w*.32,top+8]])+P([[cx-7,y],[cx+7,y],[cx,y+28]])+`</g>`},
+hair:(g)=>{const{cx,w,h,top}=g,b=200-h*.2;return `<g class="r">`+P([[cx-w*.5,top+h*.2],[cx-w*.64,b],[cx-w*.42,b],[cx-w*.36,top+h*.1]])+P([[cx+w*.5,top+h*.2],[cx+w*.64,b],[cx+w*.42,b],[cx+w*.36,top+h*.1]])+`</g>`},
+ant:(g)=>{const{cx,top}=g;return `<g class="b">`+L(cx,top,cx+8,top-24)+`<circle cx="${cx+8}" cy="${top-28}" r="4"/></g>`},
+glasses:(g)=>{const{cx,w,h,top,ey}=g,r=Math.min(w*.2,22)+8;return `<g class="b"><circle cx="${cx}" cy="${ey}" r="${r}"/>`+L(cx-r,ey,cx-w/2,ey-3)+L(cx+r,ey,cx+w/2,ey-3)+`</g>`+P([[cx-w*.5,top+h*.28],[cx-w*.58,top+h*.52],[cx-w*.38,top+h*.5]])+P([[cx+w*.5,top+h*.28],[cx+w*.58,top+h*.52],[cx+w*.38,top+h*.5]])},
+ears:(g)=>{const{cx,w,top}=g,e=(x)=>`<circle cx="${x}" cy="${top+12}" r="14"/><circle cx="${x}" cy="${top+12}" r="6"/>`;return e(cx-w*.36)+e(cx+w*.36)}};
+const K={V:{w:92,h:150,f:'hood'},B:{w:122,h:118,f:'apron'},G:{w:80,h:165,f:'hat'},I:{w:84,h:160,f:'hair'},Pi:{w:76,h:112,f:'ant'},A:{w:78,h:135,f:'glasses'},Bp:{w:132,h:130,f:'ears'},X:{w:70,h:105,f:'ant'}};
+function ch(c,x,y,s,o={}){
+ const w=c.w,h=c.h,top=200-h,by=200-h*.28,ey=200-h*.62,g={cx:0,w,h,top,by,ey},er=Math.min(w*.2,22),fy=200-h*.5,fl=Math.min(36,w*.36),d=o.walk?'.4s':'1.9s';
+ let b=`<path d="M${-w/2} 200C${-w/2} ${200-h*.75} ${-w*.36} ${top} 0 ${top}C${w*.36} ${top} ${w/2} ${200-h*.75} ${w/2} 200Q0 207 ${-w/2} 200Z"/><path d="M${-w/2+2} ${by}Q0 ${by+11} ${w/2-2} ${by}"/>`;
+ b+=`<g><animateTransform attributeName="transform" type="rotate" from="0 0 ${ey}" to="360 0 ${ey}" dur="7s" repeatCount="indefinite"/>${sp(0,ey,er)}</g>`;
+ b+=`<g class="fl" style="animation-duration:${d}">${fin(-w/2,fy,-1,fl,22)}</g><g class="fr" style="animation-duration:${d}">${fin(w/2,fy,1,fl,22)}</g>`+F[c.f](g);
+ const ft=`<g class="f1" style="animation-duration:${d}">${foot(-w*.34,w*.3)}</g><g class="f2" style="animation-duration:${d}">${foot(w*.04,w*.3)}</g>`;
+ const m=o.mv?`<animateTransform attributeName="transform" type="translate" values="${o.mv[2]||'0 0;'+o.mv[0]+' 0;0 0'}" dur="${o.mv[1]}s" repeatCount="indefinite"/>`:'';
+ return `<g>${m}<g transform="translate(${x} ${y}) scale(${s}) translate(0 -235)"><g class="c">${o.u||''}<g class="bob" style="animation-duration:${d}">${b}</g>${ft}${o.o||''}</g></g></g>`}
+const wash=(c)=>`<rect width="800" height="450" fill="${c}" stroke="none"/>`;
+const mv=(v,d)=>`<animateTransform attributeName="transform" type="translate" values="${v}" dur="${d}s" repeatCount="indefinite"/>`;
+
+const clk=(id,content,hit)=>`<g data-clickable="${id}" class="clickable">${hit?`<rect x="${hit[0]}" y="${hit[1]}" width="${hit[2]}" height="${hit[3]}" fill="none" style="pointer-events:all"/>`:''}${content}</g>`;
+
+const S=[
+()=>{let s=wash('rgba(90,100,130,.25)');
+ for(let i=0;i<12;i++){const x=i*70-10,h=110+(i*53)%150,y=360-h;s+=`<rect x="${x}" y="${y}" width="62" height="${h}"/>`;for(let r=0;r<h/28-1;r++)s+=`<path d="M${x+8} ${y+18+r*28}H${x+54}" stroke-dasharray="7 9" stroke-width="3"/>`}
+ s+=clk('s1-mars',L(565,170,565,270)+`<g class="bl b"><rect x="470" y="90" width="190" height="80" style="fill:var(--paper)"/><text x="565" y="143" font-size="34" text-anchor="middle">MARSAS</text></g>`,[460,80,210,200]);
+ s+=`<path d="M0 360H800"/><path class="rd" d="M0 410H800" stroke-dasharray="34 26"/>`;
+ s+=clk('s1-x1',ch(K.X,200,392,.4,{walk:1,mv:[120,7]}));
+ s+=clk('s1-x2',ch(K.X,600,396,.38,{walk:1,mv:[-150,9]}));
+ s+=clk('s1-vauris',ch(K.V,0,400,.55,{walk:1,mv:[0,9,'-120 0;900 0'],u:`<circle cx="-34" cy="226" r="11"/><circle cx="34" cy="226" r="11"/><path d="M-34 214H34L54 150"/>`}));
+ return s},
+()=>{let s=wash('rgba(150,100,50,.2)');
+ s+=`<path d="M240 30L215 400H585L560 30Z"/><path d="M240 30Q400 60 560 30"/><path d="M225 130H575M220 260H580" stroke-dasharray="10 14"/>`;
+ s+=`<circle cx="330" cy="140" r="34"/>`+[0,1,2,3].map(i=>L(310+i*14,120,300+i*14,150)).join('');
+ s+=clk('s2-fire',`<g class="fire" style="animation-delay:.1s"><path class="b" d="M385 400C360 360 390 350 395 320C410 345 440 360 415 400Z"/><path class="r" d="M395 400C385 380 400 372 402 360C410 372 420 384 410 400Z"/></g><path d="M350 400H440"/>`,[340,310,120,100]);
+ s+=clk('s2-note',`<rect x="480" y="250" width="80" height="65"/>`+`<g class="bl"><path class="b" d="M492 268H548M492 282H530M492 296H540"/></g><path d="M520 315V400"/>`,[475,245,90,80]);
+ s+=clk('s2-vauris',ch(K.V,310,400,.7));
+ return s},
+()=>{let s=wash('rgba(60,110,200,.2)');
+ s+=clk('s3-window',`<rect x="40" y="70" width="230" height="250"/><path d="M155 70V320M40 195H270"/>`+`<g>${mv('0 0;40 30;0 0',6)}<path class="r" d="M60 90L110 140M90 90L140 140"/></g>`,[35,65,240,260]);
+ s+=`<path d="M330 130H770M330 200H770"/>`;
+ s+=clk('s3-bottle',`<rect x="540" y="215" width="70" height="90"/><rect class="lv b" x="548" y="225" width="54" height="70" style="fill:rgba(45,79,196,.3)"/>`,[535,210,80,100]);
+ s+=clk('s3-vauris',ch(K.V,150,395,.6,{}));
+ s+=`<rect x="110" y="355" width="90" height="12"/><path d="M155 367V395"/><path d="M130 345h14v10h-14z"/><path class="st" d="M137 338q6-10 0-18" /><path class="st" style="animation-delay:.8s" d="M141 338q-6-10 0-18"/>`;
+ s+=clk('s3-bau',ch(K.B,470,340,.6,{}))+`<rect x="360" y="300" width="400" height="100" style="fill:var(--paper)"/><path d="M380 320H740M380 345H740M380 370H740" stroke-dasharray="4 12"/>`;
+ return s},
+()=>{let s=wash('rgba(200,80,50,.18)');
+ s+=`<rect x="0" y="270" width="800" height="180" fill="rgba(200,80,50,.3)" stroke="none"/><path d="M0 270H800"/>`;
+ s+=`<g class="gr"><ellipse cx="250" cy="370" rx="230" ry="60"/><ellipse cx="250" cy="370" rx="160" ry="38"/><ellipse cx="250" cy="370" rx="90" ry="20"/><ellipse cx="660" cy="320" rx="120" ry="30"/><ellipse cx="660" cy="320" rx="70" ry="16"/></g>`;
+ s+=`<rect x="40" y="215" width="100" height="55"/><rect x="690" y="195" width="90" height="48"/><path d="M60 235H120M60 250H120M705 210H765"/>`;
+ s+=`<g>${mv('0 0;60 14;0 0',30)}<circle cx="200" cy="70" r="9"/></g><g>${mv('0 0;-90 -10;0 0',40)}<circle cx="560" cy="110" r="16"/></g>`;
+ s+=clk('s4-bp1',ch(K.Bp,150,385,.28,{walk:1,mv:[160,8]}));
+ s+=clk('s4-bp2',ch(K.Bp,330,400,.3,{walk:1,mv:[-140,10]}));
+ s+=clk('s4-bp3',ch(K.Bp,560,332,.24,{walk:1,mv:[110,7]}));
+ s+=clk('s4-bau',ch(K.B,740,425,.45,{o:`<g class="b">${P([[70,150],[110,140],[116,176],[76,186]])}</g>`}));
+ return s},
+()=>{let s=wash('rgba(60,160,120,.15)');
+ s+=`<rect x="170" y="30" width="460" height="400"/><path d="M170 150H630M170 290H630"/><path d="M630 150L690 120M630 290L690 260" />`;
+ s+=`<rect x="230" y="50" width="70" height="60"/><path d="M265 50V110M230 80H300"/>`;
+ s+=`<rect x="400" y="115" width="150" height="32"/><rect x="440" y="65" width="64" height="48"/><g class="bl b"><path d="M450 80H494M450 92H484M450 104H490"/></g>`;
+ s+=clk('s5-pijus',ch(K.Pi,330,148,.5,{}));
+ s+=clk('s5-elevator',`<g class="b"><rect x="585" y="40" width="34" height="48"/>${mv('0 0;0 190;0 0',9)}</g>`,[580,35,45,250]);
+ s+=clk('s5-aja',ch(K.A,230,288,.5,{walk:1,mv:[320,10],o:`<path d="M30 150H86M44 150v-10h22v10"/>`}));
+ s+=`<rect x="260" y="360" width="260" height="42"/><path d="M280 360v-40M500 360v-40M280 330H500" stroke-dasharray="4 8"/>`;
+ return s}];
+
+const N=['Askezis','Bokštas','Krautuvėlė','Marsas','Viešbutis'];
+const T=[
+'🚀 Sveikas atvykęs į Budi miestą! Surask ir spausk ant 4 paveiksliukų!',
+'🔥 Bokšte dega jaukus židinys. Surask ir spausk ant 3 paveiksliukų!',
+'🥤 Krautuvėlėje Bau nori karšto šokolado! Surask ir spausk ant 4 paveiksliukų!',
+'🐾 Marso plantacijoje bioprimatai laukia paglostymo! Surask ir spausk ant 4 paveiksliukų!',
+'🏨 Viešbutyje Pijus kuria žaidimą. Surask ir spausk ant 3 paveiksliukų!'];
+
+const HINTS=[
+['MARSAS','X ateivis','Kitas X ateivis','Vauris su skuteriu'],
+['Ugnis','Lapelis','Vauris'],
+['Langas','Butelis','Vauris','Bau'],
+['Bioprimatas 1','Bioprimatas 2','Bioprimatas 3','Bau'],
+['Pijus','Liftas','Aja']
+];
+
+const sceneDone=[new Set(),new Set(),new Set(),new Set(),new Set()];
+let currentScene=0;
+let totalStars=0;
+
+const nav=document.getElementById('nav'),sc=document.getElementById('sc'),cap=document.getElementById('cap'),msg=document.getElementById('msg'),starsEl=document.getElementById('stars'),progressEl=document.getElementById('progress'),nextBtn=document.getElementById('nextBtn'),resetBtn=document.getElementById('resetBtn');
+
+const expectedCount=i=>HINTS[i].length;
+
+function updateStars(){
+  let t=0;
+  for(const s of sceneDone) t+=s.size*5;
+  totalStars=t;
+  starsEl.textContent=totalStars;
+}
+
+function updatePips(){
+  progressEl.innerHTML='';
+  const total=expectedCount(currentScene);
+  for(let i=0;i<total;i++){
+    const pip=document.createElement('div');
+    const done=i<sceneDone[currentScene].size;
+    pip.className='pip'+(done?' done':'');
+    pip.textContent=done?'✓':'';
+    progressEl.appendChild(pip);
+  }
+}
+
+function updateNextBtn(){
+  const total=expectedCount(currentScene);
+  const done=sceneDone[currentScene].size;
+  nextBtn.disabled=done<total;
+  if(done>=total) nextBtn.textContent=currentScene<4?'➡️ Toliau!':'🏆 Baigti!';
+  else nextBtn.textContent='➡️ Toliau';
+}
+
+function updateNavBadges(){
+  [...nav.children].forEach((b,i)=>{
+    b.classList.toggle('done',sceneDone[i].size>=expectedCount(i));
+  });
+}
+
+function showSparkle(x,y){
+  const el=document.createElement('div');
+  el.className='sparkle';
+  el.textContent=['✨','⭐','🌟','💫'][Math.floor(Math.random()*4)];
+  el.style.left=x+'px';
+  el.style.top=y+'px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),900);
+}
+
+function loadScene(i){
+  currentScene=i;
+  sc.innerHTML=S[i]();
+  cap.textContent=T[i];
+  [...nav.children].forEach((b,j)=>b.setAttribute('aria-selected',j==i));
+  sceneDone[i].forEach(id=>{
+    const el=sc.querySelector(`[data-clickable="${id}"]`);
+    if(el) el.classList.add('done');
+  });
+  updatePips();
+  updateNextBtn();
+  updateNavBadges();
+  const remaining=expectedCount(i)-sceneDone[i].size;
+  if(remaining>0) msg.textContent=`Spausk ant paveiksliukų! Liko: ${remaining}`;
+  else msg.textContent='🎉 Puiku! Scena baigta!';
+}
+
+sc.addEventListener('click',(e)=>{
+  const g=e.target.closest('[data-clickable]');
+  if(!g) return;
+  const id=g.dataset.clickable;
+  const s=sceneDone[currentScene];
+  if(s.has(id)) return;
+  s.add(id);
+  g.classList.add('done');
+  updateStars();
+  showSparkle(e.clientX,e.clientY);
+  const remaining=expectedCount(currentScene)-s.size;
+  if(remaining>0){
+    msg.textContent=`⭐ +5! Liko: ${remaining}`;
+  } else {
+    msg.textContent='🎉 Puiku! Scena baigta!';
+    for(let k=0;k<8;k++){
+      setTimeout(()=>showSparkle(
+        window.innerWidth/2 + (Math.random()-0.5)*320,
+        window.innerHeight/2 + (Math.random()-0.5)*220
+      ),k*80);
+    }
+  }
+  updatePips();
+  updateNextBtn();
+  updateNavBadges();
+});
+
+N.forEach((n,i)=>{
+  const b=document.createElement('button');
+  b.textContent=n;
+  b.setAttribute('role','tab');
+  b.onclick=()=>loadScene(i);
+  nav.append(b);
+});
+
+nextBtn.onclick=()=>{
+  if(currentScene<4) loadScene(currentScene+1);
+  else showCelebration();
+};
+
+resetBtn.onclick=()=>{
+  if(!confirm('Ar tikrai nori pradėti iš naujo?')) return;
+  sceneDone.forEach(s=>s.clear());
+  updateStars();
+  loadScene(0);
+};
+
+function showCelebration(){
+  const overlay=document.createElement('div');
+  overlay.className='celebrate';
+  overlay.innerHTML=`
+    <div class="box">
+      <h2>🏆 Sveikiname!</h2>
+      <p>Tu surinkai <strong>⭐ ${totalStars}</strong> žvaigždučių!</p>
+      <p>Visi Budi pasauliai laimingi! 🎉</p>
+      <button id="playAgain">🔁 Žaisti dar kartą</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  for(let k=0;k<40;k++){
+    setTimeout(()=>showSparkle(
+      Math.random()*window.innerWidth,
+      Math.random()*window.innerHeight*0.6
+    ),k*50);
+  }
+  overlay.querySelector('#playAgain').onclick=()=>{
+    overlay.remove();
+    sceneDone.forEach(s=>s.clear());
+    updateStars();
+    loadScene(0);
+  };
+}
+
+loadScene(0);
+updateStars();
+
+if(!matchMedia('(prefers-reduced-motion:reduce)').matches){
+  const t=document.getElementById('t');let n=1;
+  setInterval(()=>t.setAttribute('seed',n=n%6+1),380);
+}
+</script>
+</body>
+</html>
